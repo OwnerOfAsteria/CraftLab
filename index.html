@@ -1,0 +1,237 @@
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101710">
+  <meta name="description" content="CraftLab - prosty generator komend Minecraft Java Edition.">
+  <title>CraftLab — Generator komend</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #101710;
+      color: #edf5eb;
+      font: 16px system-ui, sans-serif;
+    }
+    header {
+      padding: 22px 16px;
+      border-bottom: 1px solid #2b3b2b;
+      background: #172318;
+    }
+    header, main, footer { width: min(100% - 28px, 680px); margin-inline: auto; }
+    header { width: 100%; }
+    header > div { max-width: 680px; margin: auto; }
+    .logo { font-size: 25px; font-weight: 900; color: #9bea8b; }
+    .muted { color: #a8b7a5; line-height: 1.6; }
+    main { padding: 26px 0; }
+    .panel {
+      padding: 20px;
+      border: 1px solid #344534;
+      border-radius: 16px;
+      background: #192319;
+      margin-bottom: 18px;
+    }
+    h1 { font-size: 27px; margin: 0 0 8px; }
+    h2 { font-size: 19px; margin-top: 0; }
+    label { display: block; margin: 16px 0 8px; font-weight: 650; }
+    select, button {
+      width: 100%;
+      padding: 13px;
+      border-radius: 10px;
+      font: inherit;
+    }
+    select {
+      background: #101710;
+      color: white;
+      border: 1px solid #526652;
+    }
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 14px 0;
+      font-weight: 400;
+    }
+    .check input { width: 19px; height: 19px; accent-color: #8cdd7d; }
+    button {
+      margin-top: 12px;
+      border: 0;
+      background: #9bea8b;
+      color: #142114;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #2c3c2c;
+      color: white;
+      border: 1px solid #506550;
+    }
+    pre {
+      padding: 14px;
+      background: #0a100a;
+      border: 1px solid #344534;
+      border-radius: 10px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      color: #b9f6a9;
+    }
+    footer { padding: 10px 0 30px; }
+    .notice { font-size: 13px; color: #b6c4b2; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="logo">⛏ CraftLab</div>
+      <div class="muted">Praktyczne narzędzia dla graczy Minecraft</div>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h1>Generator komend</h1>
+      <p class="muted">
+        Wybierz przedmiot i enchantmenty.
+        Wygeneruj komendę /give dla Minecraft Java 1.21.11.
+      </p>
+
+      <label for="item">Przedmiot</label>
+      <select id="item">
+        <option value="diamond_sword">Diamentowy miecz</option>
+        <option value="netherite_sword">Netherytowy miecz</option>
+        <option value="diamond_pickaxe">Diamentowy kilof</option>
+        <option value="netherite_pickaxe">Netherytowy kilof</option>
+        <option value="diamond_axe">Diamentowa siekiera</option>
+      </select>
+
+      <div id="options"></div>
+
+      <button id="generate">Generuj komendę</button>
+    </section>
+
+    <section class="panel">
+      <h2>Twoja komenda</h2>
+      <pre id="result">Wybierz enchantmenty i kliknij „Generuj komendę”.</pre>
+      <button class="secondary" id="copy">Kopiuj komendę</button>
+      <p id="status" class="notice" aria-live="polite"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Jak użyć?</h2>
+      <p class="muted">
+        1. Włącz komendy w swoim świecie lub użyj świata z uprawnieniami.
+        2. Skopiuj wygenerowaną komendę.
+        3. Wklej ją na czacie w Minecraft Java Edition.
+      </p>
+      <p class="notice">
+        Generator jest niezależnym projektem fanowskim, nieoficjalnie
+        powiązanym z Minecraftem.
+      </p>
+    </section>
+  </main>
+
+  <footer class="muted">
+    CraftLab · Pierwsza wersja · Narzędzia dla graczy
+  </footer>
+
+  <script>
+    const enchantments = [
+      { id: "sharpness", name: "Ostrość V", level: 5,
+        items: ["diamond_sword", "netherite_sword", "diamond_axe"] },
+      { id: "unbreaking", name: "Niezniszczalność III", level: 3,
+        items: ["diamond_sword", "netherite_sword", "diamond_pickaxe",
+                "netherite_pickaxe", "diamond_axe"] },
+      { id: "mending", name: "Naprawa I", level: 1,
+        items: ["diamond_sword", "netherite_sword", "diamond_pickaxe",
+                "netherite_pickaxe", "diamond_axe"] },
+      { id: "looting", name: "Grabież III", level: 3,
+        items: ["diamond_sword", "netherite_sword"] },
+      { id: "efficiency", name: "Wydajność V", level: 5,
+        items: ["diamond_pickaxe", "netherite_pickaxe", "diamond_axe"] },
+      { id: "fortune", name: "Szczęście III", level: 3,
+        items: ["diamond_pickaxe", "netherite_pickaxe"] }
+    ];
+
+    const itemSelect = document.getElementById("item");
+    const options = document.getElementById("options");
+    const result = document.getElementById("result");
+    const status = document.getElementById("status");
+
+    function renderOptions() {
+      options.replaceChildren();
+      const selectedItem = itemSelect.value;
+
+      enchantments
+        .filter(e => e.items.includes(selectedItem))
+        .forEach(e => {
+          const label = document.createElement("label");
+          label.className = "check";
+
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.value = e.id;
+          input.checked = ["unbreaking", "mending"].includes(e.id);
+
+          const text = document.createElement("span");
+          text.textContent = e.name;
+
+          label.append(input, text);
+          options.append(label);
+        });
+    }
+
+    function generateCommand() {
+      const selected = [...options.querySelectorAll("input:checked")];
+      const levels = selected.map(input => {
+        const enchant = enchantments.find(e => e.id === input.value);
+        return `${enchant.id}:${enchant.level}`;
+      });
+
+      const item = itemSelect.value;
+      const components = levels.length
+        ? `[enchantments={${levels.join(",")}}]`
+        : "";
+
+      result.textContent = `/give @p minecraft:${item}${components} 1`;
+      status.textContent = "";
+    }
+
+    itemSelect.addEventListener("change", () => {
+      renderOptions();
+      generateCommand();
+    });
+
+    document.getElementById("generate").addEventListener("click", generateCommand);
+
+    document.getElementById("copy").addEventListener("click", async () => {
+      const command = result.textContent;
+
+      if (!command.startsWith("/give ")) {
+        status.textContent = "Najpierw wygeneruj komendę.";
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(command);
+        status.textContent = "Skopiowano komendę!";
+      } catch {
+        const area = document.createElement("textarea");
+        area.value = command;
+        document.body.append(area);
+        area.select();
+        const copied = document.execCommand("copy");
+        area.remove();
+        status.textContent = copied
+          ? "Skopiowano komendę!"
+          : "Przytrzymaj komendę i skopiuj ją ręcznie.";
+      }
+    });
+
+    renderOptions();
+    generateCommand();
+  </script>
+</body>
+  </html>
+  
